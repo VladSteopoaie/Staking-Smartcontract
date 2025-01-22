@@ -16,7 +16,6 @@ contract StakingContract is ERC20, AccessControl {
     uint256 public totalAmountStaked;
     uint256 public lastUpdate; // for the rewards
 
-    // IERC20 public stakingToken;
     uint256 public rewardRate; // Tokens rewarded per second
     uint256 public totalStaked;
 
@@ -80,13 +79,9 @@ contract StakingContract is ERC20, AccessControl {
 
     // Calculates the reward for a user using the fromula:
     // (userAmount / totalAmountStaked) * daylyBatch * daysStaked
-    function _calculateRewards(address _user) private view returns (uint256) {
-        uint256 reward;
+    function _calculateRewards(uint256 _amount) private view returns (uint256) {
         uint256 daysStaked = (block.timestamp - lastUpdate) / secondsInADay;
-        reward =
-            (stakers[_user].amountStaked * daylyBatch * daysStaked) /
-            totalAmountStaked;
-        return reward;
+        return (_amount * daylyBatch * daysStaked) / totalAmountStaked;
     }
 
     // This function iterates through the mapping of users and updates their rewards
@@ -98,14 +93,16 @@ contract StakingContract is ERC20, AccessControl {
         for (uint i = 0; i < numberOfStakers; i++) {
 			// if the user claimed rewards after the last update the number of days
 			// is given by lastClaimedRewards
-            if (stakers[stakerIndex[i]].lastClaimedRewards > lastUpdate) {
+            Staker storage user = stakers[stakerIndex[i]];
+
+            if (user.lastClaimedRewards > lastUpdate) {
                 daysStaked =
                     (block.timestamp -
-                        stakers[stakerIndex[i]].lastClaimedRewards) /
+                        user.lastClaimedRewards) /
                     secondsInADay;
             }
-            stakers[stakerIndex[i]].rewards +=
-                (stakers[stakerIndex[i]].amountStaked *
+            user.rewards +=
+                (user.amountStaked *
                     daylyBatch *
                     daysStaked) /
                 totalAmountStaked;
@@ -114,47 +111,45 @@ contract StakingContract is ERC20, AccessControl {
 
     // This function deletes a user from the mapping
     function _deleteUser(address _user) private {
-        uint256 userToBeDeleted = 0; // used to identify the user
+        address userToBeDeleted;
+        uint256 userIndex; // used to identify the user
         for (uint i = 0; i < numberOfStakers; i++)
             if (stakerIndex[i] == _user) {
-                userToBeDeleted = i;
+                userToBeDeleted = stakerIndex[i];
+                userIndex = i;
                 break;
             }
 		
-        this.revokeRole(STAKER_ROLE, stakerIndex[userToBeDeleted]); // revoke the staker role
-        uint256 rewards = stakers[stakerIndex[userToBeDeleted]].rewards;
+        _revokeRole(STAKER_ROLE, userToBeDeleted); // revoke the staker role
+        Staker storage user = stakers[userToBeDeleted];
         // if there are no rewards we don't need to give the user any special permission
-		if (rewards > 0) {
-            nonStakerRewards[stakerIndex[userToBeDeleted]] = rewards; // keep the rewards
-            this.grantRole(CLAIMER_ROLE, _user);
+		if (user.rewards > 0) {
+            nonStakerRewards[userToBeDeleted] = user.rewards; // keep the rewards
+            _grantRole(CLAIMER_ROLE, _user);
         }
+
 		// if the user is not the last one in the mapping, swap with the last one
-        if (userToBeDeleted != numberOfStakers - 1)
-            stakers[stakerIndex[userToBeDeleted]] = stakers[stakerIndex[numberOfStakers - 1]
-            ];
+        if (userIndex != numberOfStakers - 1)
+            user = stakers[stakerIndex[numberOfStakers - 1]];
+
 		// delete the last user
         delete stakers[stakerIndex[numberOfStakers - 1]];
         numberOfStakers--;
+        stakerIndex.pop();
     }
 
 
     function stake() external payable validBalance(0.01 ether) wait1Day {
-        // require(msg.value > 0, "The value must be a positive number!");
         Staker memory user = stakers[msg.sender];
         
-		// require(
-        //     (block.timestamp - user.lastStaked) >= secondsInADay,
-        //     "You have to wait 1 day before you can stake!"
-        // );
-
         require(
             totalAmountStaked + msg.value <= maxStakeAmount,
             "The maximum staked amount has been exceeded!"
         );
 
-        // if the user has the role it is already a staker
+        // if the user has the role it is already a stakeruser.
         if (!hasRole(STAKER_ROLE, msg.sender)) {
-            this.grantRole(STAKER_ROLE, msg.sender);
+            _grantRole(STAKER_ROLE, msg.sender);
             numberOfStakers++;
             stakerIndex.push(msg.sender);
         }
@@ -181,11 +176,6 @@ contract StakingContract is ERC20, AccessControl {
     ) external onlyRole(STAKER_ROLE) validValue(_amount, 0.01 ether) wait1Day {
         Staker memory user = stakers[msg.sender];
         require(user.amountStaked >= _amount, "Insuficient balance!");
-        // require(_amount > 0, "Nothing to unstake!");
-        // require(
-        //     (block.timestamp - user.lastStaked) > secondsInADay,
-        //     "You have to wait 1 day before you can unstake!"
-        // );
 
 		// need to firstly update so the user won't loose the rewards
         if (block.timestamp - lastUpdate >= secondsInADay) _updateRewards();
@@ -193,6 +183,7 @@ contract StakingContract is ERC20, AccessControl {
         totalAmountStaked -= _amount;
         user.lastStaked = block.timestamp;
         user.amountStaked -= _amount;
+
 		// if the user unstaked all tokens then we delete them from the mapping
         if (user.amountStaked == 0) {
             _deleteUser(msg.sender);
@@ -207,42 +198,38 @@ contract StakingContract is ERC20, AccessControl {
     }
 
     function claimRewards() external validClaimer {
-        // the user has to be a staker or a claimer in order to claim rewards
-		// require(
-        //     hasRole(CLAIMER_ROLE, msg.sender) ||
-        //         hasRole(STAKER_ROLE, msg.sender),
-        //     "Not eligible to claim rewards!"
-        // );
-
         uint256 rewards; // for simplicity
         
 		if (hasRole(CLAIMER_ROLE, msg.sender)) {
 			// if they are a claimer then they have been deleted so 
 			// their rewards are in nonStakerRewards mapping
-            this.revokeRole(CLAIMER_ROLE, msg.sender);
+            _revokeRole(CLAIMER_ROLE, msg.sender);
             rewards = nonStakerRewards[msg.sender];
             delete nonStakerRewards[msg.sender];
         } else {
+            Staker storage user = stakers[msg.sender];
 			// the number of days staked differs if the user had claimed rewards before an update
-            if (stakers[msg.sender].lastClaimedRewards > lastUpdate) {
+            if (user.lastClaimedRewards > lastUpdate) {
                 uint256 daysStaked = (block.timestamp -
-                    stakers[msg.sender].lastClaimedRewards) / secondsInADay;
+                    user.lastClaimedRewards) / secondsInADay;
                 rewards =
-                    (stakers[msg.sender].amountStaked *
+                    (user.amountStaked *
                         daylyBatch *
                         daysStaked) /
                     totalAmountStaked;
             } else {
                 rewards =
-                    stakers[msg.sender].rewards +
-                    _calculateRewards(msg.sender);
+                    user.rewards +
+                    _calculateRewards(user.amountStaked);
             }
-            stakers[msg.sender].rewards = 0;
+            user.rewards = 0;
 			// this stops the user from abusing the claimRewards function if they are a staker
             require(rewards > 0, "No rewards to claim!");
         }
 
         stakers[msg.sender].lastClaimedRewards = block.timestamp;
+
+        require(balanceOf(address(this)) >= rewards, "Insufficient contract balance for rewards.");
 
         this.transfer(msg.sender, rewards);
 
@@ -251,11 +238,7 @@ contract StakingContract is ERC20, AccessControl {
 
 	// just a function for users to see their rewards
     function viewRewards() external view validClaimer returns (uint256) { 
-        // require(
-        //     hasRole(CLAIMER_ROLE, msg.sender) ||
-        //         hasRole(STAKER_ROLE, msg.sender),
-        //     "Not eligible to view rewards!"
-        // );
-        return (stakers[msg.sender].rewards + _calculateRewards(msg.sender));
+        Staker memory user = stakers[msg.sender];
+        return (user.rewards + _calculateRewards(user.amountStaked));
     }
 }

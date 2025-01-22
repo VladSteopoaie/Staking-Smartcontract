@@ -17,25 +17,12 @@ describe("StakingContract Tests", function () {
       "StakingContract",
       owner
     )) as StakingContract__factory;
-    // StakingContractFactory = (await ethers.getContractFactory("StakingContract", owner))
-    //   as StakingContract__factory;
   });
   
   beforeEach(async function () {
     StakingContract = await StakingContractFactory.deploy("R_TOKEN", "RTK"); // Reward rate
     await StakingContract.waitForDeployment();
-
-    // Deploy the mock ERC20 token
-    // RToken = await ethers.getContractFactory("RToken");
-    // rToken = await RToken.deploy(ethers.parseEther("1000000")); // 1M tokens
-    // await rToken.waitForDeployment();
-
-    // Deploy the staking contract with the mock token
-    
-    // Distribute tokens to users
-    // await rToken.transfer(user1.target, ethers.parseEther("100"));
-    // await rToken.transfer(user2.target, ethers.parseEther("100"));
-  });
+ });
 
   it("Testing the deployment parameters", async () => {
     expect(await StakingContract.name()).to.be.equals("R_TOKEN");
@@ -86,27 +73,21 @@ describe("StakingContract Tests", function () {
       await StakingContract.hasRole(Staker, andy.address)
     ).to.be.equal(true);
 
-    // Updated user info
-    // console.log(await StakingContract.userInfo(andy.target));
   });
 
-  it("The user should stake multiple times", async () => {
+  it("The user should stake multiple await time.", async () => {
     // First staking
     await StakingContract.connect(andy).stake({
       value: ethers.parseEther("0.1"),
     });
     // Second staking
     
-    await time.increase(86400); // increase the time to 24h
+    await time.increase(86400); // increase the await time.to 24h
     await StakingContract.connect(andy).stake({
       value: ethers.parseEther("0.15"),
     });
 
-
-
-    // console.log(await StakingContract.userInfo(andy.target));
-
-    await time.increase(86400 * 10); // increase the time to 24h * number of days
+    await time.increase(86400 * 10); // increase the await time.to 24h * number of days
     await StakingContract.connect(andy).stake({
       value: ethers.parseEther("0.4"),
     });
@@ -114,7 +95,6 @@ describe("StakingContract Tests", function () {
     // Number of stakers should not change
     expect(await StakingContract.numberOfStakers()).to.be.equal(1);
 
-    // console.log(await StakingContract.userInfo(andy.target));
   });
   
   it("The user shouldn't stake in the same day", async () => {
@@ -122,11 +102,10 @@ describe("StakingContract Tests", function () {
     await StakingContract.connect(andy).stake({
       value: ethers.parseEther("0.1"),
     });
-    // console.log(await StakingContract.userInfo(andy.target));
     
     // Second staking
     
-    await time.increase(86200); // increase the time to 24h
+    await time.increase(86200); // increase the await time.to 24h
     await expect(StakingContract.connect(andy).stake({
       value: ethers.parseEther("0.15"),
     })).to.be.revertedWith("You have to wait 1 day before you can take the action!");
@@ -139,7 +118,6 @@ describe("StakingContract Tests", function () {
       value: ethers.parseEther("0.1"),
     });
     
-    // console.log(await StakingContract.userInfo(andy.target));
     await StakingContract.connect(bob).stake({
       value: ethers.parseEther("0.3"),
     });
@@ -162,25 +140,25 @@ describe("StakingContract Tests", function () {
     await StakingContract.connect(owner).stake({
       value: ethers.parseUnits("100")
     });
-    time.increase(86400 * 2);
+    await time.increase(86400 * 2);
     await StakingContract.connect(bob).stake({
       value: ethers.parseUnits("300")
     });
     await StakingContract.connect(andy).stake({
       value: ethers.parseUnits("250")
     });
-    time.increase(86400 * 2);
+    await time.increase(86400 * 2);
     await StakingContract.connect(user).stake({
       value: ethers.parseUnits("250")
     });
-    time.increase(86400 * 2);
+    await time.increase(86400 * 2);
     await StakingContract.connect(andy).stake({
       value: ethers.parseUnits("50")
     });
 
     await StakingContract.connect(owner).unstake(ethers.parseUnits("10"));
     
-    time.increase(86400 * 2);
+    await time.increase(86400 * 2);
     await expect (StakingContract.connect(owner).stake({
       value: ethers.parseUnits("70")
     }))
@@ -255,7 +233,6 @@ describe("StakingContract Tests", function () {
       value: ethers.parseEther("0.1"),
     });
     
-    // console.log(await StakingContract.userInfo(andy.target));
     await StakingContract.connect(bob).stake({
       value: ethers.parseEther("0.2"),
     });
@@ -285,7 +262,7 @@ describe("StakingContract Tests", function () {
     expect(await StakingContract.balanceOf(bob.address)).to.be.equal(rewardsBob);
     expect(await StakingContract.balanceOf(user.address)).to.be.equal(rewardsUser);
 
-    time.increase(86400 * 3);
+    await time.increase(86400 * 3);
     // After unstake and claim user should not have claim role
     await StakingContract.connect(andy).unstake(ethers.parseUnits("0.4"));
     
