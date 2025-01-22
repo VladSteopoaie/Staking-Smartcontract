@@ -1,0 +1,141 @@
+@use 'sass:list';
+// Custom.scss
+// Option B: Include parts of Bootstrap
+
+// 1. Include functions first (so you can manipulate colors, SVGs, calc, etc)
+@import "../../../node_modules/bootstrap/scss/functions";
+
+// 2. Include any default variable overrides here
+
+$primary-color: #208cff;
+$secondary-color: #6c757d;
+$warning-color: #a97f00;
+$success-color: #00a82d;
+$light-color: #f6f6f6;
+$dark: #2d323e;
+
+// 3. Include remainder of required Bootstrap stylesheets (including any separate color mode stylesheets)
+@import "../../../node_modules/bootstrap/scss/variables";
+@import "../../../node_modules/bootstrap/scss/variables-dark";
+
+// 4. Include any default map overrides here
+
+// 5. Include remainder of required parts
+@import "../../../node_modules/bootstrap/scss/maps";
+@import "../../../node_modules/bootstrap/scss/mixins";
+@import "../../../node_modules/bootstrap/scss/root";
+
+// 6. Optionally include any other parts as needed
+// @import "../../../node_modules/bootstrap/scss/utilities";
+// @import "../../../node_modules/bootstrap/scss/reboot";
+// @import "../../../node_modules/bootstrap/scss/type";
+// @import "../../../node_modules/bootstrap/scss/images";
+// @import "../../../node_modules/bootstrap/scss/containers";
+// @import "../../../node_modules/bootstrap/scss/grid";
+// @import "../../../node_modules/bootstrap/scss/helpers";
+// @import "../../../node_modules/bootstrap/scss/buttons";
+// @import "../../../node_modules/bootstrap/scss/nav";
+// @import "../../../node_modules/bootstrap/scss/card";
+// @import "../../../node_modules/bootstrap/scss/forms";
+// @import "../../../node_modules/bootstrap/scss/navbar";
+// @import "../../../node_modules/bootstrap/scss/dropdown";
+// @import "../../../node_modules/bootstrap/scss/close";
+@import "../../../node_modules/bootstrap/scss/bootstrap";
+@import "../../../node_modules/bootstrap-icons/font/bootstrap-icons";
+
+$utilities: map-merge(
+  $utilities,
+  (
+    "height": map-merge(
+      map-get($utilities, "height"),
+      (
+        values: map-merge(
+          map-get(map-get($utilities, "height"), "values"),
+          (
+            60: 60%,
+            80: 80%
+          ),
+        ),
+      ),
+    ),
+  )
+);
+
+// 7. Optionally include utilities API last to generate classes based on the Sass map in `_utilities.scss`
+@import "../../../node_modules/bootstrap/scss/utilities/api";
+
+// 8. Add additional custom code here
+// * {
+//   padding: 0px !important;
+//   margin: 0px !important;
+// }
+
+
+body {
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+.hero {
+  background: radial-gradient(#704b4b, #2a0139);
+  color: $light-color;
+}
+
+.truncate-text {
+  display: inline-block; /* Ensure it's treated as a block-like container */
+  max-width: 70px; /* Set a maximum width */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top; /* Align properly if used inline */
+}
+
+
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+.description {
+  color: #f6d8d5;
+}
+
+.title-background{
+  position: relative;
+  font-family: "Poppins", sans-serif;
+  color: #f6d8d5;
+  font-size: 200px;
+  font-weight: 700;
+}
+
+.title-background::before{
+  content: attr(data-text);
+  position: absolute;
+  top: 0em;
+  left: 0em;
+  color: #313f97;
+  z-index: -1;
+  transition: 0.2s;
+}
+
+.title-background:hover::before{
+  top: 0.04em;
+  left: 0.04em;
+}
+
+.title-background::after{
+  content: attr(data-text);
+  position: absolute;
+  color: transparent;
+  top: 0em;
+  left: 0em;
+  background-image: radial-gradient(rgba(236, 34, 37, 0.5) 0.0125em, transparent 0.0125em);
+  background-size: 8px 8px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-stroke: 1px #ec2225;
+  transition: 0.2s;
+}
+
+.title-background:hover::after{
+  top: -0.04em;
+  left: -0.04em;
+}

@@ -1,5 +1,4 @@
 import React from "react";
-// import { ethers } from "ethers";
 
 function ConnectWallet({ setAccount }) {
   const connectWallet = async () => {
@@ -13,7 +12,7 @@ function ConnectWallet({ setAccount }) {
     }
   };
 
-  return <button onClick={connectWallet}>Connect Wallet</button>;
+  return <button className="btn btn-warning" onClick={connectWallet}>Connect</button>;
 }
 
 export default ConnectWallet;
