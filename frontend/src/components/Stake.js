@@ -8,10 +8,19 @@ function Stake({ account, amount }) {
 
   const stakeTokens = async () => {
     if (contract) {
-      console.log(contract)
-      const tx = await contract.stake({value: ethers.parseEther(amount)});
-      await tx.wait();
-      alert("Staked 1 token!");
+      try {
+        const tx = await contract.stake({
+          value: ethers.parseEther(amount),
+          nonce: 0
+        });
+        await tx.wait();
+        alert("Staked 1 token!");
+
+      }
+      catch (error)
+      {
+        console.error(error);
+      }
     }
   };
 

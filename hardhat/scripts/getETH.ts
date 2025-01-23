@@ -16,7 +16,7 @@ async function main() {
   console.log(`Sender Balance: ${ethers.formatEther(senderBalance)} ETH`);
 
   // Ensure the sender has enough ETH to transfer (adjust the amount as needed)
-  const amountToSend = ethers.parseEther("1.0"); // 1 ETH
+  const amountToSend = ethers.parseEther("1.78547"); // 1 ETH
   if (senderBalance < amountToSend) {
     console.error("Insufficient balance for transfer.");
     return;

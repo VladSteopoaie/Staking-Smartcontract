@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 // import Stake from "./components/Stake";
 import Home from "./components/Home";
@@ -6,6 +6,10 @@ import Dashboard from "./components/Dashboard";
 
 function App() {
   const [account, setAccount] = useState(null);
+
+  useEffect(() => {
+    restoreSession();
+  }, []);
   
   function copyToClipboard(textToCopy) {
     navigator.clipboard.writeText(textToCopy)
@@ -17,16 +21,29 @@ function App() {
       });
   };
 
+  async function restoreSession() {
+    const account = localStorage.getItem("account");
+    
+    if (account)
+      setAccount(account);
+  }
+
   async function connectWallet(){
     if (window.ethereum) {
       const accounts = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
       setAccount(accounts[0]);
+      localStorage.setItem("account", accounts[0]);
     } else {
       alert("Install Metamask");
     }
   };
+
+  function logOut() {
+    setAccount(null);
+    localStorage.removeItem("account");
+  }
 
   return (
     <Router>
@@ -64,7 +81,7 @@ function App() {
                     </Link>
                   </li>
                   <li className="nav-item">
-                    <Link className={`nav-link ${account ? "" : "disabled"}`} to="/dashboard  ">
+                    <Link className={`nav-link ${account ? "" : "disabled"}`} to="/dashboard">
                       Dashboard
                     </Link>
                   </li>
@@ -73,10 +90,10 @@ function App() {
                             {account ? ("Connected") : ("Not connected")}
                             <i className={`bi bi-circle-fill mx-1 fs-6 text-${account ? "success" : "danger"}`}></i>
                       </a>
-                      <ul className="dropdown-menu">
+                      <ul className="dropdown-menu bg-dark">
                         <li>
                           {account ? (
-                            <a className="dropdown-item" role="button" onClick={() => {setAccount(null);}}>Log out</a>
+                            <a className="dropdown-item" role="button" onClick={() => {logOut();}}>Log out</a>
                             ) : (
                             <a className="dropdown-item" role="button" onClick={connectWallet}>Log in</a>
                           )}
@@ -105,7 +122,7 @@ function App() {
         {/* Footer */}
         <footer className="text-center py-3 bg-dark m-3 fixed-bottom shadow rounded">
           <p className="text-light mb-0">
-            Built with <i className="bi bi-heart-fill text-danger"></i> by the Staking DApp team.
+            Built with <i className="bi bi-heart-fill text-danger"></i>.
           </p>
         </footer>
       </div>

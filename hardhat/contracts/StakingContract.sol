@@ -16,9 +16,6 @@ contract StakingContract is ERC20, AccessControl {
     uint256 public totalAmountStaked;
     uint256 public lastUpdate; // for the rewards
 
-    uint256 public rewardRate; // Tokens rewarded per second
-    uint256 public totalStaked;
-
     struct Staker {
         uint256 amountStaked;
         uint256 lastStaked;
@@ -46,6 +43,7 @@ contract StakingContract is ERC20, AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(DEFAULT_ADMIN_ROLE, address(this));
         _mint(address(this), totalTokenSupply);
+        totalAmountStaked = 0;
     }
 
     modifier validBalance(uint256 minValue) {
@@ -60,9 +58,8 @@ contract StakingContract is ERC20, AccessControl {
     }
 
     modifier wait1Day() {
-        Staker memory user = stakers[msg.sender];
 		require(
-            (block.timestamp - user.lastStaked) >= secondsInADay,
+            (block.timestamp - stakers[msg.sender].lastStaked) >= secondsInADay,
             "You have to wait 1 day before you can take the action!"
         );
         _;
@@ -154,6 +151,7 @@ contract StakingContract is ERC20, AccessControl {
             stakerIndex.push(msg.sender);
         }
         user.amountStaked += msg.value;
+        // ethPool += msg.value;
 
         if ( // this condition is to avoid division by 0 for the first staker
             block.timestamp - lastUpdate >= secondsInADay &&
@@ -183,6 +181,7 @@ contract StakingContract is ERC20, AccessControl {
         totalAmountStaked -= _amount;
         user.lastStaked = block.timestamp;
         user.amountStaked -= _amount;
+        // ethPool -= _amount;
 
 		// if the user unstaked all tokens then we delete them from the mapping
         if (user.amountStaked == 0) {
@@ -237,8 +236,20 @@ contract StakingContract is ERC20, AccessControl {
     }
 
 	// just a function for users to see their rewards
-    function viewRewards() external view validClaimer returns (uint256) { 
+    // function viewRewards() external view validClaimer returns (uint256) { 
+    //     Staker memory user = stakers[msg.sender];
+    //     return (user.rewards + _calculateRewards(user.amountStaked));
+    // }
+
+    function viewInfo() external view returns (uint256, uint256, uint256, uint256, uint256) {
         Staker memory user = stakers[msg.sender];
-        return (user.rewards + _calculateRewards(user.amountStaked));
+        return (
+            user.amountStaked,
+            user.rewards + _calculateRewards(user.amountStaked),
+            user.lastStaked,
+            user.lastClaimedRewards,
+            totalAmountStaked
+        );
     }
+
 }

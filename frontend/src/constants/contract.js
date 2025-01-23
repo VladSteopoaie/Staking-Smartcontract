@@ -2,8 +2,8 @@ export const CONTRACT_ADDRESS = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
 
 export const CONTRACT_ABI = 
   {
-    "abi" : [
-      {
+  "abi": [
+    {
       "inputs": [
         {
           "internalType": "string",
@@ -630,19 +630,6 @@ export const CONTRACT_ABI =
     },
     {
       "inputs": [],
-      "name": "rewardRate",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "secondsInADay",
       "outputs": [
         {
@@ -761,19 +748,6 @@ export const CONTRACT_ABI =
     },
     {
       "inputs": [],
-      "name": "totalStaked",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "totalSupply",
       "outputs": [
         {
@@ -866,8 +840,28 @@ export const CONTRACT_ABI =
     },
     {
       "inputs": [],
-      "name": "viewRewards",
+      "name": "viewInfo",
       "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
         {
           "internalType": "uint256",
           "name": "",

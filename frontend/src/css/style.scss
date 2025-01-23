@@ -7,12 +7,18 @@
 
 // 2. Include any default variable overrides here
 
-$primary-color: #208cff;
-$secondary-color: #6c757d;
-$warning-color: #a97f00;
-$success-color: #00a82d;
-$light-color: #f6f6f6;
-$dark: #2d323e;
+$primary: #4c2497;
+$secondary: #706259;
+$warning: #a97f00;
+$success: #007e22;
+$light-color: #d4c4d5;
+$light: #d4c4d5;
+$dark: #372d3e;
+
+$navbar-dark-color: #d4c4d5;; // Changes the default link color
+$navbar-dark-hover-color: #706259;
+$dark-active-color: #e1d5e2;
+$modal-content-border-width: 0;
 
 // 3. Include remainder of required Bootstrap stylesheets (including any separate color mode stylesheets)
 @import "../../../node_modules/bootstrap/scss/variables";
@@ -52,6 +58,7 @@ $utilities: map-merge(
         values: map-merge(
           map-get(map-get($utilities, "height"), "values"),
           (
+            30: 30%,
             60: 60%,
             80: 80%
           ),
@@ -138,4 +145,63 @@ body {
 .title-background:hover::after{
   top: -0.04em;
   left: -0.04em;
+}
+
+
+.modal-input {
+  text-align: center;
+  background: 0;
+  border: 0;
+  outline: none;
+  width: 100%;
+  // max-width: 400px;
+  font-size: 1.5em;
+  transition: padding 0.3s 0.2s ease;
+
+  &:focus {
+    padding-bottom: 5px;
+  }
+
+  // sibling magic ;o
+  &:focus + .modal-line {
+    &:after {
+      transform: scaleX(1);
+    }
+  }
+}
+
+.modal-field {
+  position: relative;
+
+  .modal-line {
+    width: 100%;
+    height: 3px;
+    position: absolute;
+    bottom: -8px;
+    background: $secondary;
+
+    &:after {
+      content: " ";
+      position: absolute;
+      float: right;
+      width: 100%;
+      height: 3px;
+      
+      transform: scalex(0);
+      transition: transform 0.3s ease;
+      
+      background: $primary;
+    }
+  }
+}
+
+/* Remove the arrows in number input fields */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
 }
