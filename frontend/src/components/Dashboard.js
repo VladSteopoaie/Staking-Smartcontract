@@ -1,24 +1,25 @@
 import React, { useEffect, useState } from "react";
 import useContract from "../hooks/useContract";
 import Stake from "./Stake";
+// import '../../../node_modules/bootstrap/dist/js/bootstrap.bundle';
 const { ethers } = require("ethers");
 
 function Dashboard({ account }) {
     const { contract } = useContract();
     const [provider, setProvider] = useState();
-    const [balanceInEther, setBalanceInEther] = useState(null);
-    const [balanceInUSD, setBalanceInUSD] = useState(null);
+    const [balanceInEther, setBalanceInEther] = useState(0);
+    const [balanceInUSD, setBalanceInUSD] = useState(0);
     const [stakedUSD, setStakedUSD] = useState(0);
     const [stakerInfo, setStakerInfo] = useState({
         amountStaked: 0,
         rewards: 0,
         lastStaked: 0,
-        lastClaimedRewards: 0,
         totalAmountStaked: 0,
     });
     const [userShare, setUserShare] = useState();
     const [totalShare, setTotalShare] = useState();
     const [toStakeAmount, setToStakeAmount] = useState(0);
+    const [stakeCooldown, setStakeCooldown] = useState(false);
 
     const handleToStake = (event) => {
         setToStakeAmount(event.target.value);
@@ -63,18 +64,35 @@ function Dashboard({ account }) {
                     amountStaked,
                     rewards,
                     lastStaked,
-                    lastClaimedRewards,
                     totalAmountStaked,
                 ] = await contract.viewInfo();
+
+                console.log(amountStaked);
+                console.log(rewards);
+                console.log(lastStaked);
+                console.log(totalAmountStaked);
 
                 // Update state with the fetched data
                 setStakerInfo({
                     amountStaked: Number(ethers.formatEther(amountStaked)), // Convert from Wei
                     rewards: Number(ethers.formatEther(rewards)),
-                    lastStaked: new Date(Number(lastStaked)  * 1000).toLocaleString(), // Convert timestamp to readable date
-                    lastClaimedRewards: new Date(Number(lastClaimedRewards) * 1000).toLocaleString(),
+                    lastStaked: Number(lastStaked) * 1000, // Convert in ms
                     totalAmountStaked: Number(ethers.formatEther(totalAmountStaked)),
                 });
+
+                const oneDayInMs = 24 * 60 * 60 * 1000; // Milliseconds in a day
+                // const blockNumber = await provider.getBlockNumber();
+                const block = await provider.getBlock(await provider.getBlockNumber());
+                const now = block.timestamp * 1000; // Current time in milliseconds
+
+                // Check if one day has passed
+                console.log(now, Number(lastStaked) * 1000, now - Number(lastStaked) * 1000, oneDayInMs);
+                if (now - Number(lastStaked) * 1000 >= oneDayInMs) {
+                   setStakeCooldown(false);
+                } else {
+                   setStakeCooldown(true);
+                }
+
                 setStakedUSD(await etherToUSD(Number(ethers.formatEther(amountStaked))));
             } catch (error) {
                 console.error("Error fetching staker info:", error);
@@ -109,32 +127,81 @@ function Dashboard({ account }) {
     };
 
     const getWalletBalance = async () => {
-
         const balanceInWei = await provider.getBalance(account);
         const balanceInEther = Number(ethers.formatEther(balanceInWei));
         setBalanceInEther(balanceInEther);
         setBalanceInUSD(await etherToUSD(balanceInEther));
     }
 
+    const hideModal = (id) => {
+        document.querySelector(`#${id}`).click();
+    }
+
     const stakeTokens = async (amount) => {
         if (contract) {
             try {
+                if (amount <= 0)
+                {
+                    alert("The amount must be positive.");
+                    return;
+                }
                 const tx = await contract.stake({
                     value: ethers.parseEther(amount),
-                    nonce: 0
                 });
                 await tx.wait();
-                // alert("Staked 1 token!");
                 await refreshValues();
+                hideModal("closeStakeModal");
+                alert(`Success, staked ${amount} ETH.`);
             }
             catch (error)
             {
                 console.error(error);
+                alert(error.reason);
             }
         }
         else 
             console.error("Contract not defined.");
+        setToStakeAmount(0);
     };
+
+    const unstakeTokens = async (amount) => {
+        if (contract) {
+            try {
+                if (amount <= 0)
+                {
+                    alert("The amount must be positive.");
+                    return;
+                }
+                const tx = await contract.unstake(ethers.parseEther(amount));
+                await tx.wait();
+                await refreshValues();
+                hideModal("closeUnstakeModal");
+                alert(`Success, unstaked ${amount} ETH.`);
+            }
+            catch (error)
+            {
+                console.error(error);
+                alert(error.reason);
+            }
+        }
+        else 
+            console.error("Contract not defined.");
+        setToStakeAmount(0);
+    };
+    
+    const claimRewards = async () => {
+        try {
+            const tx = await contract.claimRewards();
+            await tx.wait();
+            await refreshValues();
+            alert(`Success, rewards claimed.`);
+        }
+        catch (error)
+        {
+            console.error(error);
+            alert(error.reason);
+        }
+    }
 
     if (!account)
     {
@@ -163,7 +230,7 @@ function Dashboard({ account }) {
                                     ETH
                                 </span> 
 
-                                <p className="fs-6 m-0 text-secondary ps-3">{balanceInUSD && (`${balanceInUSD.toFixed(2)} USD`)}</p>
+                                <p className="fs-6 m-0 text-secondary ps-3">{balanceInUSD.toFixed(2)} USD</p>
                             </div>
                         </div>
 
@@ -179,9 +246,8 @@ function Dashboard({ account }) {
                             <p className="fs-6 m-0 text-secondary ps-3">{stakedUSD.toFixed(2)} USD</p>
                             </div>
                             <div className="d-flex mt-3">
-                                <button className="btn btn-success mx-2" data-bs-toggle="modal" data-bs-target="#stakeModal">Stake</button>
-                                {/* <Stake account={account} amount={"1"}/> */}
-                                <button className="btn btn-secondary mx-2">Unstake</button>
+                                <button className={`btn btn-${stakeCooldown ? "warning disabled" : "success"} mx-2`} data-bs-toggle="modal" data-bs-target="#stakeModal">Stake {stakeCooldown && <i className="bi bi-stopwatch"></i>}</button>
+                                <button className={`btn btn-${stakeCooldown ? "warning disabled" : "secondary"} mx-2`} data-bs-toggle="modal" data-bs-target="#unstakeModal">Unstake {stakeCooldown && <i className="bi bi-stopwatch"></i>}</button>
                             </div>
                         </div>
 
@@ -197,7 +263,7 @@ function Dashboard({ account }) {
                                 </span>
                             </p> 
                         
-                            <button className="btn btn-success mx-2 my-3">Claim rewards</button>
+                            <button className="btn btn-success mx-2 my-3" onClick={() => {claimRewards();}}>Claim rewards</button>
                         </div>
                         <div className="h-30 px-5 py-4 d-flex flex-column bg-dark rounded shadow">
                             <p className="fs-5 m-0 mb-2">Pool share:
@@ -233,13 +299,13 @@ function Dashboard({ account }) {
                 <div className="modal-dialog modal-dialog-centered">
                     <div className="modal-content bg-dark">
                     <div className="modal-header">
-                        <button type="button" className="btn-close " data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button id="closeStakeModal" type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div className="modal-body d-flex flex-column justify-content-center">
                         <h1 className="modal-title fs-2 text-center text-secondary" id="exampleModalLabel">Stake</h1>
                         <div className="modal-field mt-4">
                             <input className="modal-input" type="number" placeholder="Enter amount" 
-                                value={toStakeAmount}
+                                value={toStakeAmount != 0 ? (toStakeAmount) : ("")}
                                 onChange={handleToStake}/>
                             <div className="modal-line"></div>
                         </div>
@@ -247,6 +313,29 @@ function Dashboard({ account }) {
                     </div>
                     <div className="modal-footer d-flex justify-content-center">
                         <button type="button" className="btn btn-primary" onClick={() => {stakeTokens(toStakeAmount)}}>Stake</button>
+                    </div>
+                    </div>
+                </div>
+                </div>
+
+                <div className="modal fade" data-bs-theme="dark" id="unstakeModal" tabIndex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-content bg-dark">
+                    <div className="modal-header">
+                        <button id="closeUnstakeModal" type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div className="modal-body d-flex flex-column justify-content-center">
+                        <h1 className="modal-title fs-2 text-center text-secondary" id="exampleModalLabel">Unstake</h1>
+                        <div className="modal-field mt-4">
+                            <input className="modal-input" type="number" placeholder="Enter amount" 
+                                value={toStakeAmount != 0 ? (toStakeAmount) : ("")}
+                                onChange={handleToStake}/>
+                            <div className="modal-line"></div>
+                        </div>
+
+                    </div>
+                    <div className="modal-footer d-flex justify-content-center">
+                        <button type="button" className="btn btn-primary" onClick={() => {unstakeTokens(toStakeAmount)}}>Untake</button>
                     </div>
                     </div>
                 </div>

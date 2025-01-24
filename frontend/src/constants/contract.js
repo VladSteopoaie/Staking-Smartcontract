@@ -691,11 +691,6 @@ export const CONTRACT_ABI =
           "internalType": "uint256",
           "name": "rewards",
           "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "lastClaimedRewards",
-          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -842,11 +837,6 @@ export const CONTRACT_ABI =
       "inputs": [],
       "name": "viewInfo",
       "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        },
         {
           "internalType": "uint256",
           "name": "",

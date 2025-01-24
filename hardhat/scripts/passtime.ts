@@ -12,7 +12,7 @@ async function fastForwardTime(seconds: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
-    const secondsToAdvance = 86400 * 2; // For example, 86400 seconds = 1 day
+    const secondsToAdvance = 86400; // For example, 86400 seconds = 1 day
 
     // Call the fast forward function
     await fastForwardTime(secondsToAdvance);

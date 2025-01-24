@@ -129,11 +129,35 @@ describe("StakingContract Tests", function () {
     // Also testing the variables from the contract
     expect(await StakingContract.numberOfStakers()).to.be.equal(3);
     expect(await StakingContract.totalAmountStaked()).to.be.equal(ethers.parseUnits("0.7"));
+    
+    // Verify Andy's rewards
+    const [, andyRewards1] = await StakingContract.connect(andy).viewInfo();
+    expect(andyRewards1).to.be.equal(ethers.parseUnits("1400"));
+    
+    // Verify Bob's rewards
+    const [, bobRewards1] = await StakingContract.connect(bob).viewInfo();
+    expect(bobRewards1).to.be.equal(ethers.parseUnits("4200"));
+    
+    // Verify User's rewards
+    const [, userRewards1] = await StakingContract.connect(user).viewInfo();
+    expect(userRewards1).to.be.equal(ethers.parseUnits("0"));
+    
+    // await StakingContract.connect(andy).stake({
+    //   value: ethers.parseEther("0.3"),
+    // });
+    await time.increase(86400 * 1 + 10);
+    
+    const [, andyRewards2] = await StakingContract.connect(andy).viewInfo();
+    expect(andyRewards2).to.be.equal(ethers.parseUnits("1800"));
 
+    // Verify Bob's rewards
+    const [, bobRewards2] = await StakingContract.connect(bob).viewInfo();
+    expect(bobRewards2).to.be.equal(ethers.parseUnits("5400"));
 
-    expect(await StakingContract.connect(andy).viewRewards()).to.be.equal(ethers.parseUnits("1400"));
-    expect(await StakingContract.connect(bob).viewRewards()).to.be.equal(ethers.parseEther("4200"))
-    expect(await StakingContract.connect(user).viewRewards()).to.be.equal(ethers.parseEther("0"));
+    // Verify User's rewards
+    const [, userRewards2] = await StakingContract.connect(user).viewInfo();
+    expect(userRewards2).to.be.equal(ethers.parseUnits("1200"));
+
   });
 
   it("Testing the maximum stake amount", async() => {
@@ -247,9 +271,9 @@ describe("StakingContract Tests", function () {
     });
     await time.increase(86400 * 10);
 
-    let rewardsAndy = await StakingContract.connect(andy).viewRewards();
-    let rewardsBob = await StakingContract.connect(bob).viewRewards();
-    let rewardsUser = await StakingContract.connect(user).viewRewards();
+    const [, rewardsAndy] = await StakingContract.connect(andy).viewInfo();
+    const [, rewardsBob] = await StakingContract.connect(bob).viewInfo();
+    const [, rewardsUser] = await StakingContract.connect(user).viewInfo();
 
     await expect(StakingContract.connect(andy).claimRewards())
     .emit(StakingContract, "ClaimRewards").withArgs(andy.address, rewardsAndy);
@@ -317,6 +341,49 @@ describe("StakingContract Tests", function () {
     await StakingContract.connect(andy).unstake(ethers.parseUnits("10"));
     await expect(StakingContract.connect(andy).claimRewards()).revertedWith("Not eligible to claim rewards!");
 
+  });
+
+  it ("Simple user interaction with the contract", async () => {
+    await StakingContract.connect(andy).stake({
+      value: ethers.parseEther("1")
+    });
+    
+    await time.increase(86401 * 2);
+    let [amountStaked, rewards, lastStaked, totalAmountStaked] = await StakingContract.connect(andy).viewInfo();
+    // console.log(amountStaked, lastStaked, totalAmountStaked);
+    await expect(rewards).to.be.equal(ethers.parseEther("5600"));
+    
+    await time.increase(86401);
+    [amountStaked, rewards, lastStaked, totalAmountStaked] = await StakingContract.connect(andy).viewInfo();
+    await expect(rewards).to.be.equal(ethers.parseEther("8400"));
+    
+    await StakingContract.connect(andy).stake({
+      value: ethers.parseEther("2")
+    });
+
+    [amountStaked, rewards, lastStaked, totalAmountStaked] = await StakingContract.connect(andy).viewInfo();
+    await expect(rewards).to.be.equal(ethers.parseEther("8400"));
+    
+    await time.increase(86401);
+    [amountStaked, rewards, lastStaked, totalAmountStaked] = await StakingContract.connect(andy).viewInfo();
+    await expect(rewards).to.be.equal(ethers.parseEther("11200"));
+    
+    await StakingContract.connect(andy).claimRewards();
+    
+    await time.increase(86401);
+    await StakingContract.connect(andy).unstake(ethers.parseEther("2"));
+    
+    await time.increase(86401);
+    [amountStaked, rewards, lastStaked, totalAmountStaked] = await StakingContract.connect(andy).viewInfo();
+    await expect(rewards).to.be.equal(ethers.parseEther("5600"));
+    
+    await StakingContract.connect(andy).unstake(ethers.parseEther("1"));
+    [amountStaked, rewards, lastStaked, totalAmountStaked] = await StakingContract.connect(andy).viewInfo();
+    await expect(rewards).to.be.equal(ethers.parseEther("5600"));
+    await expect(amountStaked).to.be.equal(ethers.parseEther("0"));
+    
+    await StakingContract.connect(andy).claimRewards();
+    await expect(await StakingContract.balanceOf(andy.address)).to.be.equal(ethers.parseEther("16800"));
   });
 
 });

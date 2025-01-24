@@ -20,7 +20,6 @@ contract StakingContract is ERC20, AccessControl {
         uint256 amountStaked;
         uint256 lastStaked;
         uint256 rewards;
-        uint256 lastClaimedRewards;
     }
 
     mapping(address => uint256) public nonStakerRewards; // this is to keep the rewards for 
@@ -47,7 +46,7 @@ contract StakingContract is ERC20, AccessControl {
     }
 
     modifier validBalance(uint256 minValue) {
-        require(msg.value >= minValue, string(abi.encodePacked("Minimum value is ", minValue.toString(), ".")));
+        require(msg.value >= minValue, string(abi.encodePacked("Minimum value is ", (minValue / 10 ** 18).toString(), ".")));
         _;
     }
 
@@ -78,6 +77,8 @@ contract StakingContract is ERC20, AccessControl {
     // (userAmount / totalAmountStaked) * daylyBatch * daysStaked
     function _calculateRewards(uint256 _amount) private view returns (uint256) {
         uint256 daysStaked = (block.timestamp - lastUpdate) / secondsInADay;
+        if (totalAmountStaked == 0)
+            return 0;
         return (_amount * daylyBatch * daysStaked) / totalAmountStaked;
     }
 
@@ -85,25 +86,14 @@ contract StakingContract is ERC20, AccessControl {
     // It does not use _calculateRewards for efficiency purposes
     // And it's meant to be called when the totalAmountStaked is changed
     function _updateRewards() private {
-        uint256 daysStaked = (block.timestamp - lastUpdate) / secondsInADay;
+        // uint256 daysStaked = (block.timestamp - lastUpdate) / secondsInADay;
 
         for (uint i = 0; i < numberOfStakers; i++) {
 			// if the user claimed rewards after the last update the number of days
 			// is given by lastClaimedRewards
-            Staker storage user = stakers[stakerIndex[i]];
-
-            if (user.lastClaimedRewards > lastUpdate) {
-                daysStaked =
-                    (block.timestamp -
-                        user.lastClaimedRewards) /
-                    secondsInADay;
-            }
-            user.rewards +=
-                (user.amountStaked *
-                    daylyBatch *
-                    daysStaked) /
-                totalAmountStaked;
+            stakers[stakerIndex[i]].rewards += _calculateRewards(stakers[stakerIndex[i]].amountStaked);
         }
+        lastUpdate = block.timestamp;
     }
 
     // This function deletes a user from the mapping
@@ -137,7 +127,7 @@ contract StakingContract is ERC20, AccessControl {
 
 
     function stake() external payable validBalance(0.01 ether) wait1Day {
-        Staker memory user = stakers[msg.sender];
+        // Staker memory user = stakers[msg.sender];
         
         require(
             totalAmountStaked + msg.value <= maxStakeAmount,
@@ -150,45 +140,43 @@ contract StakingContract is ERC20, AccessControl {
             numberOfStakers++;
             stakerIndex.push(msg.sender);
         }
-        user.amountStaked += msg.value;
-        // ethPool += msg.value;
 
         if ( // this condition is to avoid division by 0 for the first staker
-            block.timestamp - lastUpdate >= secondsInADay &&
             totalAmountStaked != 0
         ) {
             _updateRewards(); // the totalAmountStaked is going to change so we need to update
                             // the rewards before that
         }
+        else {
+            lastUpdate = block.timestamp;
+        }
 
+        stakers[msg.sender].amountStaked += msg.value;
         totalAmountStaked += msg.value;
-        user.lastStaked = block.timestamp;
-        user.lastClaimedRewards = block.timestamp;
-        lastUpdate = block.timestamp;
-        stakers[msg.sender] = user;
+        stakers[msg.sender].lastStaked = block.timestamp;
         emit Stake(msg.sender, msg.value);
     }
 
     function unstake(
         uint256 _amount
     ) external onlyRole(STAKER_ROLE) validValue(_amount, 0.01 ether) wait1Day {
-        Staker memory user = stakers[msg.sender];
-        require(user.amountStaked >= _amount, "Insuficient balance!");
+        // Staker memory user = stakers[msg.sender];
+        require(stakers[msg.sender].amountStaked >= _amount, "Insuficient balance!");
 
-		// need to firstly update so the user won't loose the rewards
-        if (block.timestamp - lastUpdate >= secondsInADay) _updateRewards();
+		// firstly update so the user won't loose the rewards
+        _updateRewards();
 
         totalAmountStaked -= _amount;
-        user.lastStaked = block.timestamp;
-        user.amountStaked -= _amount;
-        // ethPool -= _amount;
+        stakers[msg.sender].lastStaked = block.timestamp;
+        stakers[msg.sender].amountStaked -= _amount;
 
 		// if the user unstaked all tokens then we delete them from the mapping
-        if (user.amountStaked == 0) {
+        if (stakers[msg.sender].amountStaked == 0) {
             _deleteUser(msg.sender);
-        } else {
-            stakers[msg.sender] = user;
         }
+        // } else {
+        //     stakers[msg.sender] = user;
+        // }
         (bool sent, ) = msg.sender.call{value: _amount}("");
 
         require(sent, "Payment failed!");
@@ -206,27 +194,13 @@ contract StakingContract is ERC20, AccessControl {
             rewards = nonStakerRewards[msg.sender];
             delete nonStakerRewards[msg.sender];
         } else {
-            Staker storage user = stakers[msg.sender];
-			// the number of days staked differs if the user had claimed rewards before an update
-            if (user.lastClaimedRewards > lastUpdate) {
-                uint256 daysStaked = (block.timestamp -
-                    user.lastClaimedRewards) / secondsInADay;
-                rewards =
-                    (user.amountStaked *
-                        daylyBatch *
-                        daysStaked) /
-                    totalAmountStaked;
-            } else {
-                rewards =
-                    user.rewards +
-                    _calculateRewards(user.amountStaked);
-            }
-            user.rewards = 0;
+            // Staker storage user = stakers[msg.sender];
+            _updateRewards();
+            rewards = stakers[msg.sender].rewards;
+            stakers[msg.sender].rewards = 0;
 			// this stops the user from abusing the claimRewards function if they are a staker
             require(rewards > 0, "No rewards to claim!");
         }
-
-        stakers[msg.sender].lastClaimedRewards = block.timestamp;
 
         require(balanceOf(address(this)) >= rewards, "Insufficient contract balance for rewards.");
 
@@ -235,19 +209,18 @@ contract StakingContract is ERC20, AccessControl {
         emit ClaimRewards(msg.sender, rewards);
     }
 
-	// just a function for users to see their rewards
-    // function viewRewards() external view validClaimer returns (uint256) { 
-    //     Staker memory user = stakers[msg.sender];
-    //     return (user.rewards + _calculateRewards(user.amountStaked));
-    // }
-
-    function viewInfo() external view returns (uint256, uint256, uint256, uint256, uint256) {
+    function viewInfo() external view returns (uint256, uint256, uint256, uint256) {
         Staker memory user = stakers[msg.sender];
+        uint256 rewards = 0;
+        if (hasRole(CLAIMER_ROLE, msg.sender))
+            rewards = nonStakerRewards[msg.sender];
+        else
+            rewards = user.rewards + _calculateRewards(user.amountStaked);
+        
         return (
             user.amountStaked,
-            user.rewards + _calculateRewards(user.amountStaked),
+            rewards,
             user.lastStaked,
-            user.lastClaimedRewards,
             totalAmountStaked
         );
     }
