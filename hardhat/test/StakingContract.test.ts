@@ -247,7 +247,7 @@ describe("StakingContract Tests", function () {
     
     // Amount must be greater than 0
     await expect (StakingContract.connect(andy).unstake(ethers.parseUnits("0")))
-    .revertedWith("Minimum value is 10000000000000000.");
+    .revertedWith("Minimum value is 0.0100.");
     
     
   });

@@ -46,13 +46,13 @@ contract StakingContract is ERC20, AccessControl {
     }
 
     modifier validBalance(uint256 minValue) {
-        require(msg.value >= minValue, string(abi.encodePacked("Minimum value is ", (minValue / 10 ** 18).toString(), ".")));
+        require(msg.value >= minValue, string(abi.encodePacked("Minimum value is ", formatEther(minValue), ".")));
         _;
     }
 
     modifier validValue(uint256 value, uint256 minValue)
     {
-        require(value >= minValue, string(abi.encodePacked("Minimum value is ", minValue.toString(), ".")));
+        require(value >= minValue, string(abi.encodePacked("Minimum value is ", formatEther(minValue), ".")));
         _;
     }
 
@@ -73,6 +73,25 @@ contract StakingContract is ERC20, AccessControl {
         _;
     }
 
+    function formatEther(uint256 value) internal pure returns (string memory) {
+        uint256 integerPart = value / 1 ether; 
+        uint256 fractionalPart = (value % 1 ether) / 10 ** 14; 
+
+        string memory integerPartStr = integerPart.toString();
+        string memory fractionalPartStr = fractionalPart.toString();
+
+        while (bytes(fractionalPartStr).length < 4) {
+            fractionalPartStr = string(abi.encodePacked("0", fractionalPartStr));
+        }
+
+        return string(abi.encodePacked(integerPartStr, ".", fractionalPartStr));
+    }
+
+    function tokenURI() public pure returns (string memory) {
+        return "http://localhost:3000/metadata.json";
+    }
+
+
     // Calculates the reward for a user using the fromula:
     // (userAmount / totalAmountStaked) * daylyBatch * daysStaked
     function _calculateRewards(uint256 _amount) private view returns (uint256) {
@@ -86,8 +105,6 @@ contract StakingContract is ERC20, AccessControl {
     // It does not use _calculateRewards for efficiency purposes
     // And it's meant to be called when the totalAmountStaked is changed
     function _updateRewards() private {
-        // uint256 daysStaked = (block.timestamp - lastUpdate) / secondsInADay;
-
         for (uint i = 0; i < numberOfStakers; i++) {
 			// if the user claimed rewards after the last update the number of days
 			// is given by lastClaimedRewards
@@ -160,7 +177,6 @@ contract StakingContract is ERC20, AccessControl {
     function unstake(
         uint256 _amount
     ) external onlyRole(STAKER_ROLE) validValue(_amount, 0.01 ether) wait1Day {
-        // Staker memory user = stakers[msg.sender];
         require(stakers[msg.sender].amountStaked >= _amount, "Insuficient balance!");
 
 		// firstly update so the user won't loose the rewards
@@ -174,9 +190,7 @@ contract StakingContract is ERC20, AccessControl {
         if (stakers[msg.sender].amountStaked == 0) {
             _deleteUser(msg.sender);
         }
-        // } else {
-        //     stakers[msg.sender] = user;
-        // }
+
         (bool sent, ) = msg.sender.call{value: _amount}("");
 
         require(sent, "Payment failed!");

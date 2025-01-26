@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 // import Stake from "./components/Stake";
 import Home from "./components/Home";
 import Dashboard from "./components/Dashboard";
+import { ethers } from "hardhat"; 
 
 function App() {
   const [account, setAccount] = useState(null);
@@ -35,6 +36,42 @@ function App() {
       });
       setAccount(accounts[0]);
       localStorage.setItem("account", accounts[0]);
+
+      const tokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+      const tokenSymbol = "RTK";
+      const tokenDecimals = 18;
+      const tokenImage = "https://gateway.pinata.cloud/ipfs/bafybeigpaeg75cfut6q352fejhwcdodvfnyuy6anlf43m5lkng6qy37hjy";
+
+      try {
+        // 'wasAdded' is a boolean. Like any RPC method, an error can be thrown.
+        const provider = new ethers.BrowserProvider(window.ethereum);
+
+        const wasAdded = await provider // Or window.ethereum if you don't support EIP-6963.
+          .request({
+            method: "wallet_watchAsset",
+            params: {
+              type: "ERC20",
+              options: {
+                // The address of the token.
+                address: tokenAddress,
+                // A ticker symbol or shorthand, up to 5 characters.
+                symbol: tokenSymbol,
+                // The number of decimals in the token.
+                decimals: tokenDecimals,
+                // A string URL of the token logo.
+                image: tokenImage,
+              },
+            },
+          });
+
+        if (wasAdded) {
+          console.log("Thanks for your interest!");
+        } else {
+          console.log("Your loss!");
+        }
+      } catch (error) {
+        console.log(error);
+      }
     } else {
       alert("Install Metamask");
     }
