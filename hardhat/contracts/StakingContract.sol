@@ -87,11 +87,6 @@ contract StakingContract is ERC20, AccessControl {
         return string(abi.encodePacked(integerPartStr, ".", fractionalPartStr));
     }
 
-    function tokenURI() public pure returns (string memory) {
-        return "http://localhost:3000/metadata.json";
-    }
-
-
     // Calculates the reward for a user using the fromula:
     // (userAmount / totalAmountStaked) * daylyBatch * daysStaked
     function _calculateRewards(uint256 _amount) private view returns (uint256) {

@@ -21,11 +21,13 @@ async function main() {
 
   console.log(`Staker 2 (${staker2.address}) staking 287.33 ETH...`);
   await staking.connect(staker2).stake({ value: ethers.parseEther("287.33") });
+  // await staking.connect(staker2).unstake(ethers.parseEther("287.33"));
   console.log("Staker 2 staked successfully.");
   await sleep(3000); 
 
   console.log(`Staker 3 (${staker3.address}) staking 70.09 ETH...`);
   await staking.connect(staker3).stake({ value: ethers.parseEther("70.09") });
+  // await staking.connect(staker3).unstake(ethers.parseEther("70.09"));
   console.log("Staker 3 staked successfully.");
 
   console.log("All stakers have completed staking.");

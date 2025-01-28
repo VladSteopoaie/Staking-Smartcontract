@@ -1,6 +1,7 @@
 {
+    "address": "0x5fbdb2315678afecb367f032d93f642f64180aa3",
     "name": "RTOKEN",
     "symbol": "RTK",
     "decimals": 18,
-    "logo": "https://gateway.pinata.cloud/ipfs/bafybeigpaeg75cfut6q352fejhwcdodvfnyuy6anlf43m5lkng6qy37hjy"
+    "image": "https://gateway.pinata.cloud/ipfs/bafybeigpaeg75cfut6q352fejhwcdodvfnyuy6anlf43m5lkng6qy37hjy"
 }

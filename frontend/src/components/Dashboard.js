@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from "react";
-import useContract from "../hooks/useContract";
-import Stake from "./Stake";
-// import '../../../node_modules/bootstrap/dist/js/bootstrap.bundle';
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from "../constants/contract";
 const { ethers } = require("ethers");
 
 function Dashboard({ account }) {
-    const { contract } = useContract();
+    const [contract, setContract] = useState(null);
     const [provider, setProvider] = useState();
     const [balanceInEther, setBalanceInEther] = useState(0);
     const [balanceInUSD, setBalanceInUSD] = useState(0);
@@ -21,20 +19,57 @@ function Dashboard({ account }) {
     const [toStakeAmount, setToStakeAmount] = useState(0);
     const [stakeCooldown, setStakeCooldown] = useState(false);
 
+    const formatter = new Intl.NumberFormat('en-US');
+
     const handleToStake = (event) => {
         setToStakeAmount(event.target.value);
     }
 
     useEffect(() => {
-        if (account) {
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            setProvider(provider);
+        const manageAccount = async () => {
+            if (account) {
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                setProvider(provider);
+                const signer = await provider.getSigner();
+                const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI.abi, signer);
+                setContract(contract);
+            }
+            else 
+            {
+                setProvider(null);
+                setContract(null);
+            }
         }
+        manageAccount();
     }, [account]);
 
     useEffect(() => {
         if (provider && contract) {
             refreshValues();
+
+            const setupEventListener = async () => {
+                // Set up the event listener
+                contract.on("Stake", (user, amount) => {
+                    console.log("Stake");
+                    refreshValues();
+                });
+                contract.on("Unstake", (user, amount) => {
+                    console.log("Unstake");
+                    refreshValues();
+                });
+                contract.on("ClaimRewards", (user, amount) => {
+                    console.log("ClaimRewards");
+                    refreshValues();
+                });
+
+                return () => {
+                    contract.removeAllListeners("Stake");
+                    contract.removeAllListeners("Unstake");
+                    contract.removeAllListeners("ClaimRewards");
+                };
+            };
+
+            setupEventListener();
         }
     }, [provider, contract]);
 
@@ -67,11 +102,6 @@ function Dashboard({ account }) {
                     totalAmountStaked,
                 ] = await contract.viewInfo();
 
-                console.log(amountStaked);
-                console.log(rewards);
-                console.log(lastStaked);
-                console.log(totalAmountStaked);
-
                 // Update state with the fetched data
                 setStakerInfo({
                     amountStaked: Number(ethers.formatEther(amountStaked)), // Convert from Wei
@@ -81,7 +111,6 @@ function Dashboard({ account }) {
                 });
 
                 const oneDayInMs = 24 * 60 * 60 * 1000; // Milliseconds in a day
-                // const blockNumber = await provider.getBlockNumber();
                 const block = await provider.getBlock(await provider.getBlockNumber());
                 const now = block.timestamp * 1000; // Current time in milliseconds
 
@@ -149,7 +178,7 @@ function Dashboard({ account }) {
                     value: ethers.parseEther(amount),
                 });
                 await tx.wait();
-                await refreshValues();
+                // await refreshValues();
                 hideModal("closeStakeModal");
                 alert(`Success, staked ${amount} ETH.`);
             }
@@ -174,7 +203,7 @@ function Dashboard({ account }) {
                 }
                 const tx = await contract.unstake(ethers.parseEther(amount));
                 await tx.wait();
-                await refreshValues();
+                // await refreshValues();
                 hideModal("closeUnstakeModal");
                 alert(`Success, unstaked ${amount} ETH.`);
             }
@@ -193,7 +222,7 @@ function Dashboard({ account }) {
         try {
             const tx = await contract.claimRewards();
             await tx.wait();
-            await refreshValues();
+            // await refreshValues();
             alert(`Success, rewards claimed.`);
         }
         catch (error)
@@ -224,26 +253,26 @@ function Dashboard({ account }) {
                         <div className="px-5 py-3 bg-dark rounded shadow mb-4 h-30 d-flex align-items-center">
                             <div className="fs-2 m-0">Balance: 
                                 <span className="text-success ms-2">
-                                    {balanceInEther && (`${balanceInEther.toFixed(4)}`)}
+                                    {formatter.format(balanceInEther.toFixed(4))}
                                 </span>
                                 <span className="fs-4 text-secondary ms-2">
                                     ETH
                                 </span> 
 
-                                <p className="fs-6 m-0 text-secondary ps-3">{balanceInUSD.toFixed(2)} USD</p>
+                                <p className="fs-6 m-0 text-secondary ps-3">{formatter.format(balanceInUSD.toFixed(2))} USD</p>
                             </div>
                         </div>
 
                         <div className="px-5 py-3 bg-dark rounded shadow d-flex h-30 align-items-center justify-content-between">
                             <div className="fs-2 m-0 me-5">Staked: 
                                 <span className="text-success ms-2">
-                                    {stakerInfo.amountStaked.toFixed(4)}
+                                    {formatter.format(stakerInfo.amountStaked.toFixed(4))}
                                 </span>
                                 <span className="fs-4 text-secondary ms-2">
                                     ETH
                                 </span> 
 
-                            <p className="fs-6 m-0 text-secondary ps-3">{stakedUSD.toFixed(2)} USD</p>
+                            <p className="fs-6 m-0 text-secondary ps-3">{formatter.format(stakedUSD.toFixed(2))} USD</p>
                             </div>
                             <div className="d-flex mt-3">
                                 <button className={`btn btn-${stakeCooldown ? "warning disabled" : "success"} mx-2`} data-bs-toggle="modal" data-bs-target="#stakeModal">Stake {stakeCooldown && <i className="bi bi-stopwatch"></i>}</button>
@@ -256,7 +285,7 @@ function Dashboard({ account }) {
                         <div className="h-30 px-5 py-3 d-flex bg-dark rounded shadow mb-4 align-items-center justify-content-between">
                             <p className="fs-2 m-0">Rewards:
                                 <span className="text-success ms-2">
-                                    {stakerInfo.rewards.toFixed(4)}
+                                    {formatter.format(stakerInfo.rewards.toFixed(4))}
                                 </span>
                                 <span className="fs-4 text-secondary ms-2">
                                     RTK
@@ -279,7 +308,7 @@ function Dashboard({ account }) {
                             </p>
                             <p className="fs-5 m-0 mb-3">Total ETH staked:
                                 <span className="fs-6 text-secondary ms-2">
-                                    <span className="text-success">{stakerInfo.totalAmountStaked.toFixed(2) } </span>
+                                    <span className="text-success">{formatter.format(stakerInfo.totalAmountStaked.toFixed(2))} </span>
                                     / 1000
                                 </span>
                             </p>
